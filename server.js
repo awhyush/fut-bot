@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import app from "./hooks/tg-hook.js";
-import { setWebhook } from "./services/telegramService.js";
+import { setWebhook } from "./services/tg-service.js";
 
 dotenv.config();
 
