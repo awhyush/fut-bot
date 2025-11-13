@@ -24,7 +24,7 @@ app.post("/webhook", async (req, res) => {
     if (["yes", "no"].includes(userMessage)) {
       await Response.create({
         userId,
-        response: userMessage,
+        vote: userMessage,
         gameDate: new Date(),
         timestamp: new Date(),
       });
