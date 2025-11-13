@@ -1,6 +1,6 @@
 import express from "express";
 import dotenv from "dotenv";
-import Response from "../models/response.js";
+import Response from "../models/voteResponse.js";
 import { sendMessage } from "../services/telegramService.js";
 
 dotenv.config();
