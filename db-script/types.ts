@@ -4,5 +4,6 @@ export interface PlayerType {
   rating: string;
   playerScore: string;
   contactNumber?: string;
+  telegramId: string;
   role?: string;
 }

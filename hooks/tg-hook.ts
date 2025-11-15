@@ -1,8 +1,10 @@
 import express, { Request, Response as ExpressResponse } from "express";
 import "dotenv/config";
-import Response, { IVoteResponse } from "../models/voteResponse";
+import Vote from "../models/votes";
+import Player from "../models/player";
 import { sendMessage } from "../services/tg-service";
 import { TelegramUpdate } from "./types";
+import { IPlayer, IVoteResponse } from "../models/types";
 
 const app = express();
 app.use(express.json());
@@ -33,9 +35,18 @@ app.post("/webhook", async (req: WebhookRequest, res: ExpressResponse) => {
 
     console.log(`From ${userName} (${userId}): ${userMessage}`);
 
-    // --- Handle Voting Logic ---
+    // Fetch the player's role
+    const player: IPlayer | null = await Player.findOne({
+      telegramId: String(userId),
+    });
+    if (!player) {
+      await sendMessage(userId, `⚠️ You are not registered in the system.`);
+      return res.sendStatus(200);
+    }
+
+    // --- Handle Voting Logic (all players can vote) ---
     if (["yes", "no"].includes(userMessage)) {
-      await Response.create({
+      await Vote.create({
         userId: String(userId),
         vote: userMessage as "yes" | "no",
         gameDate: new Date().toISOString().split("T")[0],
@@ -46,28 +57,40 @@ app.post("/webhook", async (req: WebhookRequest, res: ExpressResponse) => {
         userId,
         `Got it ${userName}, your vote '${userMessage.toUpperCase()}' is recorded ✅`
       );
+      return res.sendStatus(200);
     }
 
-    if (userMessage === "generate teams") {
-      const yesPlayers: IVoteResponse[] = await Response.find({
-        vote: "yes",
-      }).exec();
+    // --- Admin-only commands ---
+    if (["generate teams", "start poll"].includes(userMessage)) {
+      if (player.role !== "Admin") {
+        await sendMessage(userId, `❌ Only admins can perform this action.`);
+        return res.sendStatus(200);
+      }
 
-      const names: string[] = yesPlayers.map((p) => p.userId);
+      if (userMessage === "/generate") {
+        const yesPlayers: IVoteResponse[] = await Vote.find({
+          vote: "yes",
+        }).exec();
+        const names: string[] = yesPlayers.map((p) => p.userId);
 
-      names.sort(() => Math.random() - 0.5);
+        names.sort(() => Math.random() - 0.5);
 
-      const half = Math.ceil(names.length / 2);
+        const half = Math.ceil(names.length / 2);
+        const teamA: string[] = names.slice(0, half);
+        const teamB: string[] = names.slice(half);
 
-      const teamA: string[] = names.slice(0, half);
-      const teamB: string[] = names.slice(half);
+        await sendMessage(
+          userId,
+          `⚽ Teams generated!\n\nTeam A: ${teamA.join(
+            ", "
+          )}\nTeam B: ${teamB.join(", ")}`
+        );
+      }
 
-      await sendMessage(
-        userId,
-        `⚽ Teams generated!\n\nTeam A: ${teamA.join(
-          ", "
-        )}\nTeam B: ${teamB.join(", ")}`
-      );
+      if (userMessage === "/start-poll") {
+        // Implement poll creation logic here
+        await sendMessage(userId, `✅ Poll has been started.`);
+      }
     }
   } catch (err) {
     const error = err as Error;
